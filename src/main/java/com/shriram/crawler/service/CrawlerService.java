@@ -17,7 +17,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -26,23 +25,16 @@ import java.util.stream.Collectors;
 @Service
 public class CrawlerService {
 
-    private static final int TIMEOUT_MS = 5_000;
+    private static final int TIMEOUT_MS = 15_000;
     private static final int MAX_BODY_SIZE = 524_288; // 512KB - enough for metadata + 5000 chars of body
     private static final int MAX_BODY_LENGTH = 5000;
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                     + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-    private static final long CACHE_TTL_MS = 300_000; // 5 minutes
-    private static final int MAX_CACHE_SIZE = 500;
     private static final Map<String, List<String>> TOPIC_DICTIONARY = buildTopicDictionary();
 
     private final ExecutorService crawlerExecutor;
-    private final ConcurrentHashMap<String, CachedResult> cache = new ConcurrentHashMap<>();
-
-    private record CachedResult(PageMetadata metadata, long timestamp) {
-        boolean isExpired() { return System.currentTimeMillis() - timestamp > CACHE_TTL_MS; }
-    }
 
     public CrawlerService(@Qualifier("crawlerExecutor") ExecutorService crawlerExecutor) {
         this.crawlerExecutor = crawlerExecutor;
@@ -68,40 +60,18 @@ public class CrawlerService {
 
     public CrawlResponse crawl(CrawlRequest request) {
         long start = System.currentTimeMillis();
-        evictExpiredCache();
 
-        List<String> urls = request.getUrls();
-        Set<String> uniqueUrls = new LinkedHashSet<>(urls);
+        List<Future<PageMetadata>> futures = request.getUrls().stream()
+                .map(url -> crawlerExecutor.submit(() -> extractMetadata(url)))
+                .toList();
 
-        Map<String, Future<PageMetadata>> futureMap = new LinkedHashMap<>();
-        for (String url : uniqueUrls) {
-            CachedResult cached = cache.get(url);
-            if (cached != null && !cached.isExpired()) {
-                log.info("Cache hit for {}", url);
-            } else {
-                futureMap.put(url, crawlerExecutor.submit(() -> extractMetadata(url)));
-            }
-        }
-
-        Map<String, PageMetadata> resolvedMap = new LinkedHashMap<>();
-        for (String url : uniqueUrls) {
-            if (futureMap.containsKey(url)) {
-                PageMetadata result = getResult(futureMap.get(url));
-                cache.put(url, new CachedResult(result, System.currentTimeMillis()));
-                resolvedMap.put(url, result);
-            } else {
-                resolvedMap.put(url, cache.get(url).metadata());
-            }
-        }
-
-        List<PageMetadata> results = urls.stream()
-                .map(resolvedMap::get)
+        List<PageMetadata> results = futures.stream()
+                .map(this::getResult)
                 .toList();
 
         long elapsed = System.currentTimeMillis() - start;
         long successCount = results.stream().filter(PageMetadata::isSuccess).count();
-        log.info("Crawled {} URLs ({} unique, {} cached) in {}ms",
-                results.size(), uniqueUrls.size(), uniqueUrls.size() - futureMap.size(), elapsed);
+        log.info("Crawled {} URLs in {}ms (parallel)", results.size(), elapsed);
 
         return CrawlResponse.builder()
                 .totalRequested(results.size())
@@ -199,19 +169,6 @@ public class CrawlerService {
             return true;
         } catch (MalformedURLException | IllegalArgumentException e) {
             return false;
-        }
-    }
-
-    private void evictExpiredCache() {
-        cache.entrySet().removeIf(e -> e.getValue().isExpired());
-        if (cache.size() > MAX_CACHE_SIZE) {
-            int toRemove = cache.size() - MAX_CACHE_SIZE;
-            var iterator = cache.entrySet().iterator();
-            while (toRemove > 0 && iterator.hasNext()) {
-                iterator.next();
-                iterator.remove();
-                toRemove--;
-            }
         }
     }
 

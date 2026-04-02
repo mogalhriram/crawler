@@ -49,8 +49,6 @@ A Spring Boot REST API that crawls web pages, extracts HTML metadata, and classi
 
 - **Parallel crawling** using Java 21 virtual threads
 - **Topic classification** via keyword frequency analysis (14 categories)
-- **In-memory caching** with 5-minute TTL and 500-entry limit
-- **URL deduplication** within the same request
 - **Bot detection bypass** with browser-like HTTP headers
 - **Resilient** — handles HTTP errors, invalid SSL, non-HTML content, malformed URLs
 
