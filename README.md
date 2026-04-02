@@ -106,6 +106,8 @@ java -Xms256m -Xmx512m -jar target/crawler.jar
 
 ## Testing with cURL
 
+### Single URL
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/crawl \
   -H "Content-Type: application/json" \
@@ -115,6 +117,63 @@ curl -X POST http://localhost:5000/api/v1/crawl \
     ]
   }'
 ```
+
+### Sample: multiple URLs (Amazon, REI blog, CNN)
+
+Request (same order as `results`):
+
+```bash
+curl --location 'http://localhost:5000/api/v1/crawl' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "urls": [
+      "http://www.amazon.com/Cuisinart-CPT-122-Compact-2-Slice-Toaster/dp/B009GQ034C/ref=sr_1_1?s=kitchen&ie=UTF8&qid=1431620315&sr=1-1&keywords=toaster",
+      "http://blog.rei.com/camp/how-to-introduce-your-indoorsy-friend-to-the-outdoors/",
+      "https://www.cnn.com/2025/09/23/tech/google-study-90-percent-tech-jobs-ai"
+    ]
+  }'
+```
+
+Example response (shape is stable; `bodyText` / `topics` / `timeTakenMs` vary by live HTML and heuristics). Long `bodyText` values are truncated to **5000 characters** in the API — shown abbreviated here:
+
+```json
+{
+  "results": [
+    {
+      "url": "http://www.amazon.com/Cuisinart-CPT-122-Compact-2-Slice-Toaster/dp/B009GQ034C/ref=sr_1_1?s=kitchen&ie=UTF8&qid=1431620315&sr=1-1&keywords=toaster",
+      "title": "Amazon.com: Cuisinart CPT-122 2-Slice Compact Plastic Toaster, Slots for Bagels & Bread, 7 Shade Settings, Cancel/Defrost/Reheat Functions, Removable Crumb Tray, Small Kitchen Appliance for Home & Office, White: Home & Kitchen",
+      "description": "Online Shopping for Kitchen Small Appliances from a great selection of Coffee Machines, Blenders, Juicers, Ovens, Specialty Appliances, & more at everyday low prices",
+      "bodyText": "Skip to Main content About this item … (nav, product UI, shipping — up to 5000 chars) …",
+      "topics": ["Kitchen & Home Appliances", "E-Commerce", "Entertainment", "Technology", "Sports & Outdoors"],
+      "success": true,
+      "errorMessage": null
+    },
+    {
+      "url": "http://blog.rei.com/camp/how-to-introduce-your-indoorsy-friend-to-the-outdoors/",
+      "title": "How to Introduce Your Indoorsy Friend to the Outdoors - Uncommon Path – An REI Co-op Publication",
+      "description": "Share your passion for the outdoors and introduce a friend to hike and camp--don't forget to start slow.",
+      "bodyText": "REI Accessibility Statement Skip to main content … (full article + chrome — up to 5000 chars) …",
+      "topics": ["Sports & Outdoors", "Entertainment", "Electronics", "Food & Beverage", "E-Commerce"],
+      "success": true,
+      "errorMessage": null
+    },
+    {
+      "url": "https://www.cnn.com/2025/09/23/tech/google-study-90-percent-tech-jobs-ai",
+      "title": "Google says 90% of tech workers are now using AI at work | CNN Business",
+      "description": "The overwhelming majority of tech industry workers use artificial intelligence on the job for tasks like writing and modifying code, a new Google study has found.",
+      "bodyText": "",
+      "topics": ["Technology", "Books & Education"],
+      "success": true,
+      "errorMessage": null
+    }
+  ],
+  "timeTakenMs": 1526,
+  "totalRequested": 3,
+  "totalSuccessful": 3
+}
+```
+
+CNN often returns an **empty `bodyText`** because the article is rendered with JavaScript; `title` and `description` still come from the initial HTML `<head>`.
 
 ## Project Structure
 
