@@ -6,8 +6,20 @@ A Spring Boot REST API that crawls web pages, extracts HTML metadata, and classi
 
 - Java 21
 - Spring Boot 4.0.5
-- Jsoup (HTML parsing)
+- [Jsoup](https://jsoup.org/) — HTTP client + HTML parser (see below)
 - Virtual Threads (parallel crawling)
+
+## Crawling library: Jsoup
+
+HTTP requests and HTML parsing use **[Jsoup](https://jsoup.org/)** — Maven coordinates `org.jsoup:jsoup` (**1.18.3** in this project; see `pom.xml`). Source: [jhy/jsoup](https://github.com/jhy/jsoup).
+
+| Role | How it is used |
+|------|----------------|
+| **Fetch** | `Jsoup.connect(url)` performs the GET (with redirects, timeout, headers, and body size limit configured in code). |
+| **Parse** | `Connection.Response` → `Document` for CSS-selector queries (`title`, `meta`, `body.text()`, etc.). |
+| **Not included** | Jsoup does **not** execute JavaScript, render pages, or drive a browser — it only sees the HTML returned in that single response. |
+
+For heavier sites that need a real browser, you would add something like Playwright or Selenium alongside or instead of Jsoup.
 
 ## API
 
@@ -51,6 +63,15 @@ A Spring Boot REST API that crawls web pages, extracts HTML metadata, and classi
 - **Topic classification** via keyword frequency analysis (14 categories)
 - **Bot detection bypass** with browser-like HTTP headers
 - **Resilient** — handles HTTP errors, invalid SSL, non-HTML content, malformed URLs
+
+## Limitations
+
+- **No JavaScript** — Parsing is done with Jsoup on the raw HTML only. Pages that render most content in the browser (React, Vue, many news sites) may return an **empty or very short `bodyText`** while `title` / `description` can still be filled from `<head>` meta tags.
+- **`bodyText` source** — Taken from `document.body` visible text. It can include nav, footers, and ads on traditional sites; it does not follow **iframes**, **Shadow DOM**, or JSON-in-`<script>` article payloads.
+- **Truncation** — `bodyText` is capped at **5000 characters** in the API response.
+- **Topics** — Heuristic keyword scoring over a fixed dictionary, not machine learning; results are indicative only.
+- **Remote behavior** — Sites may rate-limit, block datacenter IPs, or require cookies; some responses are paywalls or bot challenges rather than full articles.
+- **Single URL** — Only the requested URL is fetched; multi-page articles are not followed automatically.
 
 ## Running Locally
 

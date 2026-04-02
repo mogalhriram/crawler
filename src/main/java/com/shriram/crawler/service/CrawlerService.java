@@ -120,7 +120,8 @@ public class CrawlerService {
                     .execute();
 
             int statusCode = response.statusCode();
-            if (statusCode >= 400) {
+            // 2xx = success per HTTP (not only 200 — e.g. 201/204 are valid). 4xx/5xx and non-2xx fail.
+            if (statusCode < 200 || statusCode > 299) {
                 return PageMetadata.builder()
                         .url(url)
                         .success(false)
