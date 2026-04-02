@@ -56,6 +56,22 @@ A Spring Boot REST API that crawls web pages, extracts HTML metadata, and classi
 
 ## Running Locally
 
+### IntelliJ (recommended)
+
+1. **File → Project Structure → Project**: SDK **21**.
+2. Open the **Maven** tool window (**View → Tool Windows → Maven**).
+3. Expand **crawler → Lifecycle**.
+4. Double-click **`clean`**, then **`package`** (add **`-DskipTests`** in the run configuration or Maven runner if tests fail).
+5. Runnable JAR: **`target/crawler.jar`** (set by `finalName` in `pom.xml`).
+
+Run the app: **Run → Run 'CrawlerApplication'** or:
+
+```bash
+java -jar target/crawler.jar
+```
+
+### Command line
+
 ```bash
 ./mvnw spring-boot:run
 ```
@@ -66,7 +82,7 @@ The server starts on port `5000`.
 
 ```bash
 ./mvnw clean package -DskipTests
-java -Xms256m -Xmx512m -jar target/crawler-0.0.1-SNAPSHOT.jar
+java -Xms256m -Xmx512m -jar target/crawler.jar
 ```
 
 ## Testing with cURL

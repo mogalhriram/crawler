@@ -11,8 +11,9 @@
 	<groupId>com.shriram</groupId>
 	<artifactId>crawler</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<packaging>jar</packaging>
+	<name>Web Crawler API</name>
+	<description>REST API to crawl URLs, extract HTML metadata, and classify topics</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -58,7 +59,9 @@
 		</dependency>
 	</dependencies>
 
+	<!-- Build from IntelliJ: Maven tool window → Lifecycle → clean, then package (skipTests optional). Output: target/crawler.jar -->
 	<build>
+		<finalName>crawler</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
