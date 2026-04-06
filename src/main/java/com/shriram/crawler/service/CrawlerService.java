@@ -10,6 +10,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.net.ssl.*;
@@ -25,7 +26,9 @@ import java.util.stream.Collectors;
 @Service
 public class CrawlerService {
 
-    private static final int TIMEOUT_MS = 15_000;
+    /** Default when `crawler.http.timeout-ms` is not set (matches `application.properties`). */
+    private static final int DEFAULT_HTTP_TIMEOUT_MS = 30_000;
+
     private static final int MAX_BODY_SIZE = 524_288; // 512KB - enough for metadata + 5000 chars of body
     private static final int MAX_BODY_LENGTH = 5000;
     private static final String USER_AGENT =
@@ -35,9 +38,13 @@ public class CrawlerService {
     private static final Map<String, List<String>> TOPIC_DICTIONARY = buildTopicDictionary();
 
     private final ExecutorService crawlerExecutor;
+    private final int httpTimeoutMs;
 
-    public CrawlerService(@Qualifier("crawlerExecutor") ExecutorService crawlerExecutor) {
+    public CrawlerService(
+            @Qualifier("crawlerExecutor") ExecutorService crawlerExecutor,
+            @Value("${crawler.http.timeout-ms:" + DEFAULT_HTTP_TIMEOUT_MS + "}") int httpTimeoutMs) {
         this.crawlerExecutor = crawlerExecutor;
+        this.httpTimeoutMs = httpTimeoutMs;
     }
 
     @PostConstruct
@@ -107,7 +114,7 @@ public class CrawlerService {
         try {
             Connection.Response response = Jsoup.connect(url)
                     .userAgent(USER_AGENT)
-                    .timeout(TIMEOUT_MS)
+                    .timeout(httpTimeoutMs)
                     .maxBodySize(MAX_BODY_SIZE)
                     .ignoreHttpErrors(true)
                     .ignoreContentType(true)
